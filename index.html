@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AssetMind AI — Prototype Demonstration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0A0D10;
+    --panel: #12171D;
+    --panel-2: #171E25;
+    --line: #263039;
+    --text: #E7EDF2;
+    --muted: #8697A6;
+    --muted-2: #55636F;
+    --amber: #FFB020;
+    --red: #FF5A4E;
+    --teal: #33D6B0;
+    --blue: #4FA3FF;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'IBM Plex Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--text); font-family:var(--font-body); line-height:1.5; min-height:100vh;}
+  .grid-bg{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, black 30%, transparent 100%);
+  }
+  .wrap{max-width:900px; margin:0 auto; padding:0 20px; position:relative; z-index:1;}
+
+  header{padding:28px 0 8px;}
+  .top-row{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;}
+  .brand{display:flex; align-items:center; gap:10px; font-family:var(--font-display); font-weight:700; font-size:16px;}
+  .brand-dot{width:8px; height:8px; border-radius:50%; background:var(--teal); box-shadow:0 0 10px var(--teal); animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:0.35;}}
+  .tag{font-family:var(--font-mono); font-size:11px; color:var(--muted); border:1px solid var(--line); padding:4px 10px; border-radius:20px;}
+
+  h1{font-family:var(--font-display); font-weight:700; font-size:clamp(23px,4.3vw,32px); letter-spacing:-0.01em; margin-top:22px; max-width:600px;}
+  .lede{color:var(--muted); font-size:14.5px; margin-top:10px; max-width:620px;}
+  .lede b{color:var(--text); font-weight:600;}
+
+  .rag-strip{
+    margin-top:16px; font-family:var(--font-mono); font-size:11.5px; color:var(--muted);
+    border:1px dashed var(--line); border-radius:20px; padding:9px 16px;
+    display:inline-flex; align-items:center; gap:8px; background:var(--panel); flex-wrap:wrap;
+  }
+  .rag-strip b{color:var(--teal); font-weight:600;}
+
+  .legend{display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;}
+  .legend-item{
+    display:flex; align-items:center; gap:8px; font-family:var(--font-mono); font-size:11.5px;
+    color:var(--muted); border:1px solid var(--line); padding:7px 12px; border-radius:20px; background:var(--panel);
+  }
+  .legend-item .sw{width:8px; height:8px; border-radius:50%; background:var(--c);}
+
+  .console{background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden; margin-top:24px;}
+  .console-head{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 18px; border-bottom:1px solid var(--line); background:var(--panel-2); flex-wrap:wrap;}
+  .console-head-left{display:flex; align-items:center; gap:10px; font-family:var(--font-mono); font-size:12px; color:var(--muted);}
+  .dots{display:flex; gap:6px;}
+  .dots span{width:8px; height:8px; border-radius:50%; background:var(--line);}
+  .status-badge{font-family:var(--font-mono); font-size:11px; padding:5px 11px; border-radius:20px; border:1px solid var(--line); color:var(--muted); transition:all 0.3s ease;}
+  .status-badge.working{color:var(--amber); border-color:rgba(255,176,32,0.4); background:rgba(255,176,32,0.08);}
+  .status-badge.done{color:var(--teal); border-color:rgba(51,214,176,0.4); background:rgba(51,214,176,0.08);}
+  .status-badge.live{color:var(--red); border-color:rgba(255,90,78,0.4); background:rgba(255,90,78,0.08);}
+
+  .alarm-feed{padding:10px 18px; font-family:var(--font-mono); font-size:12px; max-height:220px; overflow-y:auto; scroll-behavior:smooth;}
+  .alarm-row{display:grid; grid-template-columns:70px 92px 1fr; gap:12px; padding:5px 0; border-bottom:1px dashed rgba(255,255,255,0.05); color:var(--muted); transition:opacity 0.5s ease, background 0.4s ease;}
+  .alarm-row .tag2{color:var(--text);}
+  .alarm-row .sev{font-size:10px;}
+  .alarm-row.sev-crit .sev{color:var(--red);}
+  .alarm-row.sev-warn .sev{color:var(--amber);}
+  .alarm-row.faded{opacity:0.12;}
+  .alarm-row.related{background:rgba(79,163,255,0.1); border-left:2px solid var(--blue); padding-left:8px; color:var(--text); opacity:1;}
+
+  .run-bar{padding:16px 18px; border-top:1px solid var(--line); display:flex; align-items:center; gap:14px; flex-wrap:wrap; background:var(--panel-2);}
+  .btn{font-family:var(--font-display); font-weight:600; font-size:13.5px; background:var(--teal); color:#04231C; border:none; padding:13px 20px; border-radius:6px; cursor:pointer; transition:transform 0.15s ease, box-shadow 0.15s ease;}
+  .btn:hover{transform:translateY(-2px); box-shadow:0 10px 26px -8px rgba(51,214,176,0.45);}
+  .btn:disabled{opacity:0.5; cursor:not-allowed; transform:none; box-shadow:none;}
+  .run-note{font-family:var(--font-mono); font-size:11px; color:var(--muted-2);}
+
+  .funnel-row{display:flex; align-items:center; gap:10px; padding:0 18px; border-top:1px solid var(--line); background:var(--panel-2); flex-wrap:wrap; max-height:0; opacity:0; overflow:hidden; transition:max-height 0.4s ease, opacity 0.4s ease, padding 0.4s ease;}
+  .funnel-row.show{max-height:160px; opacity:1; padding:16px 18px;}
+  .funnel-box{font-family:var(--font-mono); padding:10px 16px; border:1px solid var(--line); border-radius:8px; background:var(--panel); text-align:center; min-width:100px;}
+  .funnel-box .n{font-family:var(--font-display); font-size:21px; font-weight:700; color:var(--text);}
+  .funnel-box.alert .n{color:var(--red);}
+  .funnel-box .l{font-size:9.5px; color:var(--muted); margin-top:3px; letter-spacing:0.03em; text-transform:uppercase;}
+  .funnel-arrow{color:var(--muted-2); font-size:16px;}
+
+  .pipeline{padding:20px 18px 22px; display:flex; flex-direction:column; gap:14px;}
+  .agent-card{background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:18px; opacity:0; transform:translateY(14px); transition:opacity 0.5s ease, transform 0.5s ease, border-color 0.4s ease;}
+  .agent-card.show{opacity:1; transform:translateY(0);}
+  .agent-card.active{border-color:var(--agent-color, var(--teal));}
+  .agent-head{display:flex; align-items:center; gap:12px; margin-bottom:12px;}
+  .agent-icon{width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; background:color-mix(in srgb, var(--agent-color) 16%, transparent); border:1px solid color-mix(in srgb, var(--agent-color) 40%, transparent); flex:none;}
+  .agent-titles{flex:1; min-width:0;}
+  .agent-name{font-family:var(--font-display); font-weight:600; font-size:14.5px;}
+  .agent-role{font-family:var(--font-mono); font-size:10.5px; color:var(--muted); margin-top:2px;}
+  .agent-spinner{width:14px; height:14px; border-radius:50%; border:2px solid var(--line); border-top-color:var(--agent-color); animation:spin 0.8s linear infinite; flex:none; display:none;}
+  .agent-card.working .agent-spinner{display:block;}
+  .agent-card.working .agent-check{display:none;}
+  .agent-check{color:var(--agent-color); font-size:16px; flex:none;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .agent-body{font-size:13.5px; color:var(--muted); display:none;}
+  .agent-card.working .agent-body, .agent-card.complete .agent-body{display:block;}
+  .agent-body .line{color:var(--text); margin-bottom:8px;}
+  .em-badge{display:inline-block; font-family:var(--font-mono); font-size:10px; font-weight:700; letter-spacing:0.05em; color:#1a0503; background:var(--red); padding:3px 8px; border-radius:4px; margin-right:8px; vertical-align:middle;}
+
+  .kv{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;}
+  .kv .item{font-family:var(--font-mono); font-size:11px; background:var(--panel); border:1px solid var(--line); padding:6px 10px; border-radius:6px;}
+  .kv .item b{color:var(--agent-color); font-weight:600;}
+  .kv .item.ok{color:var(--teal); border-color:rgba(51,214,176,0.3);}
+  .cite{font-family:var(--font-mono); font-size:10.5px; color:var(--muted-2); border-left:2px solid var(--line); padding-left:8px; margin-top:11px;}
+
+  .related-label{font-family:var(--font-mono); font-size:11px; color:var(--muted); margin-top:14px; margin-bottom:6px;}
+  .mini-list{max-height:170px; overflow-y:auto; border:1px solid var(--line); border-radius:8px; padding:6px 10px; background:var(--panel);}
+  .mini-row{display:grid; grid-template-columns:62px 88px 1fr; gap:10px; font-family:var(--font-mono); font-size:10.8px; padding:5px 0; border-bottom:1px dashed rgba(255,255,255,0.06); color:var(--muted);}
+  .mini-row:last-child{border-bottom:none;}
+  .mini-row .t{color:var(--text);}
+
+  .handoff{font-family:var(--font-mono); font-size:11px; color:var(--muted-2); margin-top:14px; padding-top:12px; border-top:1px dashed var(--line);}
+  .handoff b{color:var(--muted);}
+
+  .lp-card{margin-top:12px; border:1px solid rgba(255,138,61,0.35); background:rgba(255,138,61,0.07); border-radius:8px; padding:14px;}
+  .lp-head{display:flex; align-items:center; gap:8px; font-family:var(--font-mono); font-size:11px; color:var(--amber); margin-bottom:8px;}
+  .lp-card h5{font-family:var(--font-display); font-size:13.5px; color:var(--text); margin-bottom:6px;}
+  .lp-card p{font-size:12.5px; color:var(--muted);}
+  .lp-stats{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
+  .lp-stats span{font-family:var(--font-mono); font-size:10.5px; background:var(--panel); border:1px solid var(--line); padding:4px 8px; border-radius:6px; color:var(--muted);}
+
+  .oim-quote{margin-top:12px; border-left:3px solid var(--teal); padding:10px 14px; background:rgba(51,214,176,0.07); border-radius:0 8px 8px 0; font-size:12.5px; font-style:italic; color:var(--text);}
+  .oim-quote .src{display:block; margin-top:8px; font-family:var(--font-mono); font-size:10.5px; color:var(--muted-2); font-style:normal;}
+
+  .checklist{list-style:none; margin-top:10px;}
+  .checklist li{display:flex; gap:9px; padding:5px 0; color:var(--text); font-size:13px;}
+  .checklist li .num{font-family:var(--font-mono); font-size:10.5px; color:var(--agent-color); flex:none; padding-top:2px;}
+
+  .verdict{margin:0 18px 20px; padding:18px; border-radius:10px; background:rgba(51,214,176,0.07); border:1px solid rgba(51,214,176,0.35); opacity:0; transform:translateY(10px); transition:opacity 0.5s ease, transform 0.5s ease; display:flex; gap:12px; align-items:flex-start;}
+  .verdict.show{opacity:1; transform:translateY(0);}
+  .verdict .vi{font-size:18px; color:var(--teal); flex:none;}
+  .verdict h4{font-family:var(--font-display); font-size:14px; margin-bottom:4px;}
+  .verdict p{font-size:12.5px; color:var(--muted);}
+
+  .reset-row{display:flex; justify-content:center; margin-top:18px;}
+  .reset-link{font-family:var(--font-mono); font-size:12px; color:var(--muted-2); background:none; border:none; cursor:pointer; text-decoration:underline; text-underline-offset:3px;}
+  .reset-link:hover{color:var(--muted);}
+
+  footer{padding:30px 0 40px; text-align:center;}
+  footer .l{font-family:var(--font-mono); font-size:11px; color:var(--muted-2);}
+
+  @media (max-width:600px){
+    .alarm-row{grid-template-columns:56px 68px 1fr; font-size:10.5px;}
+    .mini-row{grid-template-columns:50px 62px 1fr;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important;}
+  }
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+
+<div class="wrap">
+  <header>
+    <div class="top-row">
+      <div class="brand"><span class="brand-dot"></span> AssetMind AI</div>
+      <div class="tag">Prototype Demo</div>
+    </div>
+    <h1>1,000 alarms in. 1 verified emergency alert out.</h1>
+    <p class="lede">The facility is mid-upset: <b>1,000 alarms</b> fired across every process unit. Run the Filtration Agent to watch it collapse the flood into a single escalated alert — then hand off to the Consequence and Procedure agents, which act on <b>that one alert only</b>.</p>
+
+    <div class="rag-strip">⚡ <b>RAG</b>-grounded retrieval over indexed operating procedures &amp; Loss Prevention reports · served by an <b>open-source LLM</b>, fully on-prem · avg retrieval 340ms</div>
+
+    <div class="legend">
+      <div class="legend-item" style="--c:#4FA3FF"><span class="sw"></span>🔎 Filtration — OIMs + telemetry + Loss Prevention DB</div>
+      <div class="legend-item" style="--c:#FF8A3D"><span class="sw"></span>⚠️ Consequence — impact + Loss Prevention match</div>
+      <div class="legend-item" style="--c:#33D6B0"><span class="sw"></span>🛠️ Procedure — OIM-cited steps</div>
+    </div>
+  </header>
+
+  <div class="console">
+    <div class="console-head">
+      <div class="console-head-left"><div class="dots"><span></span><span></span><span></span></div>neo-chat // plant-wide incident console</div>
+      <div class="status-badge live" id="statusBadge">● 1,000 active alarms · 14 process units</div>
+    </div>
+
+    <div class="alarm-feed" id="alarmFeed"></div>
+
+    <div class="run-bar">
+      <button class="btn" id="runBtn" onclick="runAnalysis()">▶ Run Filtration Agent on 1,000 alarms</button>
+      <span class="run-note" id="runNote">scanning against indexed OIMs, live equipment telemetry &amp; the Loss Prevention database</span>
+    </div>
+
+    <div class="funnel-row" id="funnelRow">
+      <div class="funnel-box"><div class="n" id="fn1">1000</div><div class="l">raw alarms</div></div>
+      <div class="funnel-arrow">→</div>
+      <div class="funnel-box"><div class="n" id="fn2">0</div><div class="l">correlated</div></div>
+      <div class="funnel-arrow">→</div>
+      <div class="funnel-box alert"><div class="n" id="fn3">0</div><div class="l">emergency alert</div></div>
+    </div>
+
+    <div class="pipeline" id="pipeline">
+      <!-- Agent 1: Filtration -->
+      <div class="agent-card" id="agent1" style="--agent-color:#4FA3FF">
+        <div class="agent-head">
+          <div class="agent-icon">🔎</div>
+          <div class="agent-titles">
+            <div class="agent-name">Filtration Agent</div>
+            <div class="agent-role">Classifies all 1,000 alarms against equipment OIMs, real-time telemetry &amp; the Loss Prevention DB</div>
+          </div>
+          <div class="agent-spinner"></div>
+          <div class="agent-check">✓</div>
+        </div>
+        <div class="agent-body">
+          <div class="line"><span class="em-badge">EMERGENCY</span>1 of 1,000 alarms escalated — Severe Gas Lock, ESP Unit 12 (Well A-114)</div>
+          <p>Every alarm was cross-referenced against the OIM for its corresponding equipment, matched against that equipment's live telemetry, and checked for a matching failure pattern in the Loss Prevention database. Only one cluster matched a known high-risk signature.</p>
+          <div class="kv">
+            <div class="item ok">✓ OIM cross-referenced</div>
+            <div class="item ok">✓ Real-time telemetry matched</div>
+            <div class="item ok">✓ Loss Prevention DB pattern match</div>
+            <div class="item">Confidence <b>94%</b></div>
+          </div>
+          <div class="related-label">Based on 14 of 1,000 alarms (Well A-114 / ESP Unit 12) — all other alarms filtered out as uncorrelated:</div>
+          <div class="mini-list" id="relatedList"></div>
+          <div class="cite">Sources: ESP-OIM-4471 §6.2 "Gas Interference Diagnostics" · Historical Log #A114-2023-11 · live SCADA stream, Unit 12</div>
+          <div class="handoff">→ <b>Consequence</b> and <b>Procedure</b> agents now run only on this escalated alert and its 14 related alarms.</div>
+        </div>
+      </div>
+
+      <!-- Agent 2: Consequence -->
+      <div class="agent-card" id="agent2" style="--agent-color:#FF8A3D">
+        <div class="agent-head">
+          <div class="agent-icon">⚠️</div>
+          <div class="agent-titles">
+            <div class="agent-name">Consequence Agent</div>
+            <div class="agent-role">Simulates physics forward and matches against a past Loss Prevention incident</div>
+          </div>
+          <div class="agent-spinner"></div>
+          <div class="agent-check">✓</div>
+        </div>
+        <div class="agent-body">
+          <div class="line">Forecast: <b>motor burnout in ~45 minutes</b> at current amp-draw trend</div>
+          <p>Forward-simulated the thermal and mechanical load curve using live current, vibration, and winding-temperature telemetry against the motor's rated tolerance envelope.</p>
+          <div class="kv">
+            <div class="item">Time to failure <b>45 min</b></div>
+            <div class="item">Equipment loss <b>$1.5M</b></div>
+            <div class="item">Production deferred <b>850 bopd</b></div>
+            <div class="item">Safety impact <b>Medium</b></div>
+          </div>
+          <div class="lp-card">
+            <div class="lp-head">📁 Loss Prevention incident match — 91% pattern similarity</div>
+            <h5>LP-2019-0447 — ESP Motor Burnout &amp; Electrical Fire, Well C-88, Platform Bravo</h5>
+            <p>Same cyclic gas-lock precursor: current oscillation and declining flow at stable frequency, observed 41 minutes before failure. Alarm sequence matches this event almost exactly.</p>
+            <div class="lp-stats">
+              <span>Loss: $2.1M</span>
+              <span>Downtime: 6 days</span>
+              <span>1 recordable safety incident</span>
+              <span>Filed: Nov 2019</span>
+            </div>
+          </div>
+          <div class="cite">Sources: Motor thermal derating curve (ESP-OIM-4471 §9) · Loss Prevention record LP-2019-0447 · live SCADA telemetry</div>
+        </div>
+      </div>
+
+      <!-- Agent 3: Procedure -->
+      <div class="agent-card" id="agent3" style="--agent-color:#33D6B0">
+        <div class="agent-head">
+          <div class="agent-icon">🛠️</div>
+          <div class="agent-titles">
+            <div class="agent-name">Procedure Agent</div>
+            <div class="agent-role">Retrieves the exact, authorized mitigation steps directly from the OIM</div>
+          </div>
+          <div class="agent-spinner"></div>
+          <div class="agent-check">✓</div>
+        </div>
+        <div class="agent-body">
+          <div class="line">Retrieved OIM snippet — direct excerpt, not generated:</div>
+          <div class="oim-quote">
+            "§4.2 Gas Lock Mitigation — Immediate Response: Upon confirmed cyclic current/pressure oscillation exceeding 15% amplitude, reduce VSD frequency to 40 Hz to interrupt the gas-lock cycle. If annulus pressure does not respond within 10 minutes, escalate to emergency shutdown per ESD-12."
+            <span class="src">— ESP-OIM-4471, Section 4.2, p. 38</span>
+          </div>
+          <ol class="checklist">
+            <li><span class="num">01</span> Reduce VSD frequency to 40 Hz to break the gas-lock cycle.</li>
+            <li><span class="num">02</span> Open casing valve to bleed gas — confirm annulus pressure drop.</li>
+            <li><span class="num">03</span> Monitor motor current for a 10-minute stabilization window.</li>
+            <li><span class="num">04</span> If current does not stabilize, initiate shutdown per ESD-12.</li>
+            <li><span class="num">05</span> Notify Production Engineer on duty; log incident in Neo Chat.</li>
+          </ol>
+          <div class="cite">Source: SOP-A114-GasLock-Response Rev. 2 §4.1–4.5, cross-checked against ESP-OIM-4471 §4.2</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="verdict" id="verdict">
+      <div class="vi">✅</div>
+      <div>
+        <h4>Verified recommendation — RAG-grounded, zero hallucination</h4>
+        <p>1,000 alarms → 14 correlated → 1 emergency alert. Every diagnosis, consequence, and step above is retrieved from an indexed OIM, the Loss Prevention database, or live telemetry — via Retrieval-Augmented Generation on an open-source LLM running fully on-premise. Nothing was generated from memory alone. Operator confirmation is required before any action is executed.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="reset-row"><button class="reset-link" onclick="resetDemo()">↺ reset simulation</button></div>
+
+  <footer><div class="l">AssetMind AI — Prototype Demo · Safe AI Track</div><p style="margin-top:10px;font-size:12px;color:#8a8a8a;">
+Prototype demonstration using synthetic data only. No live operational systems or proprietary company data are connected.
+</p>
+</div>
+
+<script>
+  // ---- 14 correlated alarms (the real signal) ----
+  const relatedAlarms = [
+    {time:'09:41:02', tag:'CT-9042-HI', desc:'Motor current trending high — ESP-12 / Well A-114', sev:'crit'},
+    {time:'09:41:15', tag:'VT-3305-HI', desc:'Motor vibration high — ESP-12 / Well A-114', sev:'warn'},
+    {time:'09:41:22', tag:'TT-1187-HI', desc:'Motor winding temp high — ESP-12 / Well A-114', sev:'warn'},
+    {time:'09:41:40', tag:'PT-4471-HI', desc:'Discharge pressure high — ESP-12 / Well A-114', sev:'warn'},
+    {time:'09:42:03', tag:'FT-2210-LO', desc:'Flowline rate low — ESP-12 / Well A-114', sev:'crit'},
+    {time:'09:42:19', tag:'CT-9042-HIHI', desc:'Motor current high-high — ESP-12 / Well A-114', sev:'crit'},
+    {time:'09:42:31', tag:'PT-4471-HIHI', desc:'Discharge pressure high-high — ESP-12 / Well A-114', sev:'crit'},
+    {time:'09:42:47', tag:'LT-5521-LO', desc:'Casing fluid level low — ESP-12 / Well A-114', sev:'warn'},
+    {time:'09:43:02', tag:'VT-3305-HIHI', desc:'Motor vibration high-high — ESP-12 / Well A-114', sev:'crit'},
+    {time:'09:43:20', tag:'FT-2210-LOLO', desc:'Flowline rate low-low — ESP-12 / Well A-114', sev:'crit'},
+    {time:'09:43:38', tag:'TT-1187-HIHI', desc:'Winding temp high-high — ESP-12 / Well A-114', sev:'crit'},
+    {time:'09:43:55', tag:'SPD-114-DEV', desc:'VSD speed deviation — ESP-12 / Well A-114', sev:'warn'},
+    {time:'09:44:10', tag:'CT-9042-CYC', desc:'Cyclic current oscillation — ESP-12 / Well A-114', sev:'warn'},
+    {time:'09:44:26', tag:'PT-4471-CYC', desc:'Cyclic pressure oscillation — ESP-12 / Well A-114', sev:'warn'}
+  ];
+  const relatedKeys = new Set(relatedAlarms.map(a=>a.time+'|'+a.tag));
+
+  // ---- generate ~986 noise alarms across the rest of the facility ----
+  const tagPrefixes = ['PT','FT','TT','VT','CT','LT','SPD','FLW','PRS','DP','RPM','PH','TRQ','LVL'];
+  const units = ['Well A-101','Well A-108','Well B-52','Well B-207','Well C-14','Well C-31','Well D-15','Well D-203',
+                 'Comp Station 2','Unit 3 Separator','Booster Pump 4','Well E-9','Well F-77','Injection Well I-3',
+                 'Well G-22','Water Treatment Skid 1','Gas Lift Manifold','Flare Header'];
+  const descTemplates = ['Pressure fluctuation detected','Flow rate deviation','Temperature drift','Vibration above baseline',
+    'Sensor communication delay','Valve position mismatch','Level reading anomaly','Current draw variance',
+    'Pump efficiency drop','Line pressure noise','Routine calibration flag','Minor pressure dip',
+    'Speed controller jitter','Backup sensor discrepancy','Instrument air pressure low','Filter differential high'];
+
+  function pad(n){return n.toString().padStart(2,'0');}
+  function secToTime(s){
+    s = s % 86400;
+    const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = Math.floor(s%60);
+    return pad(h)+':'+pad(m)+':'+pad(sec);
+  }
+
+  function generateNoise(count){
+    const out = [];
+    let t = 7*3600 + 55*60; // 07:55:00
+    for(let i=0;i<count;i++){
+      t += 2 + Math.floor(Math.random()*11); // +2..12s
+      const prefix = tagPrefixes[Math.floor(Math.random()*tagPrefixes.length)];
+      const num = 1000 + Math.floor(Math.random()*9000);
+      const unit = units[Math.floor(Math.random()*units.length)];
+      const desc = descTemplates[Math.floor(Math.random()*descTemplates.length)];
+      const sev = Math.random() < 0.28 ? 'crit' : 'warn';
+      out.push({time:secToTime(t), tag:prefix+'-'+num, desc: desc+' — '+unit, sev});
+    }
+    return out;
+  }
+
+  const noise = generateNoise(986);
+  const allAlarms = noise.concat(relatedAlarms).sort((a,b)=> a.time < b.time ? -1 : a.time > b.time ? 1 : 0);
+
+  const feedEl = document.getElementById('alarmFeed');
+  function renderFeed(){
+    feedEl.innerHTML = allAlarms.map(a=>{
+      const key = a.time+'|'+a.tag;
+      const isRelated = relatedKeys.has(key);
+      return `<div class="alarm-row sev-${a.sev}" data-key="${key}">
+        <span>${a.time}</span>
+        <span class="tag2">${a.tag}</span>
+        <span>${a.desc}</span>
+      </div>`;
+    }).join('');
+  }
+  renderFeed();
+
+  const relListEl = document.getElementById('relatedList');
+  relListEl.innerHTML = relatedAlarms.map(a=>`
+    <div class="mini-row"><span>${a.time}</span><span class="t">${a.tag}</span><span>${a.desc}</span></div>
+  `).join('');
+
+  // ---- marquee auto-scroll to convey a live flood ----
+  let marqueeTimer = setInterval(()=>{
+    if(feedEl.scrollTop + feedEl.clientHeight >= feedEl.scrollHeight - 1){
+      feedEl.scrollTop = 0;
+    } else {
+      feedEl.scrollTop += 1;
+    }
+  }, 40);
+
+  function animateCount(el, from, to, duration){
+    return new Promise(resolve=>{
+      const start = performance.now();
+      function step(now){
+        const p = Math.min(1, (now-start)/duration);
+        const val = Math.round(from + (to-from)*p);
+        el.textContent = val;
+        if(p<1){ requestAnimationFrame(step); } else { resolve(); }
+      }
+      requestAnimationFrame(step);
+    });
+  }
+
+  let hasRun = false;
+  async function runAnalysis(){
+    if(hasRun) return;
+    hasRun = true;
+    clearInterval(marqueeTimer);
+
+    const runBtn = document.getElementById('runBtn');
+    const runNote = document.getElementById('runNote');
+    const statusBadge = document.getElementById('statusBadge');
+    runBtn.disabled = true;
+    runBtn.textContent = '⏳ Filtering 1,000 alarms...';
+    statusBadge.className = 'status-badge working';
+    statusBadge.textContent = '● cross-referencing OIMs, telemetry & Loss Prevention DB';
+
+    // reveal funnel
+    const funnelRow = document.getElementById('funnelRow');
+    funnelRow.classList.add('show');
+    await animateCount(document.getElementById('fn1'), 0, 1000, 500);
+    await sleep(200);
+    await animateCount(document.getElementById('fn2'), 0, 14, 700);
+    await sleep(200);
+    await animateCount(document.getElementById('fn3'), 0, 1, 400);
+
+    // fade/highlight rows
+    document.querySelectorAll('.alarm-row').forEach(r=>{
+      if(relatedKeys.has(r.dataset.key)){ r.classList.add('related'); }
+      else { r.classList.add('faded'); }
+    });
+    const firstRelated = feedEl.querySelector('.alarm-row.related');
+    if(firstRelated){ firstRelated.scrollIntoView({block:'center'}); }
+    await sleep(500);
+
+    // run agent cards in sequence
+    const ids = ['agent1','agent2','agent3'];
+    for(const id of ids){
+      const card = document.getElementById(id);
+      card.classList.add('show','working');
+      card.scrollIntoView({behavior:'smooth', block:'center'});
+      await sleep(1500);
+      card.classList.remove('working');
+      card.classList.add('complete');
+      await sleep(350);
+    }
+
+    statusBadge.className = 'status-badge done';
+    statusBadge.textContent = '✓ 1 emergency alert verified';
+    document.getElementById('verdict').classList.add('show');
+    runBtn.textContent = '✓ Analysis complete';
+    runNote.textContent = 'operator confirmation required before any action is executed';
+  }
+
+  function resetDemo(){
+    hasRun = false;
+    document.getElementById('runBtn').disabled = false;
+    document.getElementById('runBtn').textContent = '▶ Run Filtration Agent on 1,000 alarms';
+    document.getElementById('runNote').textContent = 'scanning against indexed OIMs, live equipment telemetry & the Loss Prevention database';
+    document.getElementById('statusBadge').className = 'status-badge live';
+    document.getElementById('statusBadge').textContent = '● 1,000 active alarms · 14 process units';
+    document.getElementById('funnelRow').classList.remove('show');
+    document.getElementById('fn1').textContent = '1000';
+    document.getElementById('fn2').textContent = '0';
+    document.getElementById('fn3').textContent = '0';
+    ['agent1','agent2','agent3'].forEach(id=>{
+      document.getElementById(id).classList.remove('show','working','complete','active');
+    });
+    document.getElementById('verdict').classList.remove('show');
+    renderFeed();
+    clearInterval(marqueeTimer);
+    marqueeTimer = setInterval(()=>{
+      if(feedEl.scrollTop + feedEl.clientHeight >= feedEl.scrollHeight - 1){ feedEl.scrollTop = 0; }
+      else { feedEl.scrollTop += 1; }
+    }, 40);
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+</script>
+
+</body>
+</html>
